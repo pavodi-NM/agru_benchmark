@@ -1,0 +1,104 @@
+# Model Checkpoints and Weights
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+checkpoints/
+saved_models/
+models/*.pt
+models/*.pth
+
+# Data Files and Datasets
+data/
+datasets/
+*.csv
+*.tsv
+*.json
+*.npy
+*.npz
+*.mat
+
+# MNIST and other large datasets
+MNIST/
+mnist/
+*.gz
+*.tar
+*.zip
+
+# Results and Outputs
+outputs/
+runs/
+experiments/
+logs/
+*.log
+
+# Plots and Visualizations (optional - uncomment if you want to track plots)
+# *.png
+# *.jpg
+# *.jpeg
+# *.pdf
+# *.svg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+env_cuda/
+.conda/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PyTorch
+lightning_logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
