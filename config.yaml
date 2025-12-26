@@ -39,7 +39,7 @@ training:
   deterministic: true
   
   # Training parameters
-  num_epochs: 5 # 50
+  num_epochs: 150 # 50
   batch_size: 128
   
   # Early stopping
@@ -127,7 +127,7 @@ models:
     num_layers: 1
     dropout: 0.0
     # Antisymmetric specific parameters
-    gamma: 0.01  # Diffusion coefficient for stability (γI term)
+    gamma: 2.0 # Diffusion coefficient for stability (γI term)
     epsilon: 1.0  # Global step size for dynamics scaling
     learnable_epsilon: true  # Whether epsilon is learnable
     # Weight initialization
