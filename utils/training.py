@@ -117,25 +117,44 @@ class MetricTracker:
         return max(self.history['val_accuracy'])
 
 
-def create_optimizer(model: nn.Module, config: Dict) -> optim.Optimizer:
+def create_optimizer(
+    model: nn.Module,
+    config: Dict,
+    model_type: Optional[str] = None
+) -> optim.Optimizer:
     """
     Create optimizer based on configuration.
-    
+
     Args:
         model: Model to optimize
         config: Configuration dictionary
-        
+        model_type: Optional model type (e.g., 'lstm', 'gru', 'agru') for model-specific settings
+
     Returns:
         Optimizer instance
     """
-    opt_config = config['optimization']
-    opt_type = opt_config['optimizer'].lower()
-    lr = opt_config['learning_rate']
-    weight_decay = opt_config['weight_decay']
-    
+    # Start with global optimization config
+    global_opt_config = config['optimization']
+
+    # Check for model-specific optimization settings
+    model_opt_config = {}
+    if model_type and model_type in config.get('models', {}):
+        model_opt_config = config['models'][model_type].get('optimization', {})
+
+    # Model-specific settings override global settings
+    opt_type = model_opt_config.get('optimizer', global_opt_config['optimizer']).lower()
+    lr = model_opt_config.get('learning_rate', global_opt_config['learning_rate'])
+    weight_decay = model_opt_config.get('weight_decay', global_opt_config['weight_decay'])
+
+    # Log which settings are being used
+    if model_opt_config:
+        print(f"  Using model-specific optimization: optimizer={opt_type}, lr={lr}, weight_decay={weight_decay}")
+    else:
+        print(f"  Using global optimization: optimizer={opt_type}, lr={lr}, weight_decay={weight_decay}")
+
     if opt_type == 'adam':
-        betas = tuple(opt_config['adam']['betas'])
-        eps = opt_config['adam']['eps']
+        betas = tuple(global_opt_config.get('adam', {}).get('betas', [0.9, 0.999]))
+        eps = global_opt_config.get('adam', {}).get('eps', 1e-8)
         return optim.Adam(
             model.parameters(),
             lr=lr,
@@ -144,8 +163,8 @@ def create_optimizer(model: nn.Module, config: Dict) -> optim.Optimizer:
             weight_decay=weight_decay
         )
     elif opt_type == 'adamw':
-        betas = tuple(opt_config['adam']['betas'])
-        eps = opt_config['adam']['eps']
+        betas = tuple(global_opt_config.get('adam', {}).get('betas', [0.9, 0.999]))
+        eps = global_opt_config.get('adam', {}).get('eps', 1e-8)
         return optim.AdamW(
             model.parameters(),
             lr=lr,
@@ -154,8 +173,8 @@ def create_optimizer(model: nn.Module, config: Dict) -> optim.Optimizer:
             weight_decay=weight_decay
         )
     elif opt_type == 'sgd':
-        momentum = opt_config['sgd']['momentum']
-        nesterov = opt_config['sgd']['nesterov']
+        momentum = global_opt_config.get('sgd', {}).get('momentum', 0.9)
+        nesterov = global_opt_config.get('sgd', {}).get('nesterov', True)
         return optim.SGD(
             model.parameters(),
             lr=lr,
@@ -164,9 +183,16 @@ def create_optimizer(model: nn.Module, config: Dict) -> optim.Optimizer:
             weight_decay=weight_decay
         )
     elif opt_type == 'rmsprop':
+        rmsprop_config = global_opt_config.get('rmsprop', {})
+        alpha = rmsprop_config.get('alpha', 0.99)
+        eps = rmsprop_config.get('eps', 1e-8)
+        momentum = rmsprop_config.get('momentum', 0.0)
         return optim.RMSprop(
             model.parameters(),
             lr=lr,
+            alpha=alpha,
+            eps=eps,
+            momentum=momentum,
             weight_decay=weight_decay
         )
     else:
@@ -329,11 +355,12 @@ def train_model(
     val_loader: DataLoader,
     config: Dict,
     device: torch.device,
-    model_name: str
+    model_name: str,
+    model_type: Optional[str] = None
 ) -> Tuple[nn.Module, MetricTracker]:
     """
     Full training procedure.
-    
+
     Args:
         model: Model to train
         train_loader: Training data loader
@@ -341,7 +368,8 @@ def train_model(
         config: Configuration dictionary
         device: Device to use
         model_name: Name of the model (for logging)
-        
+        model_type: Model type key (e.g., 'lstm', 'gru', 'agru') for model-specific config
+
     Returns:
         model: Trained model (best validation accuracy)
         tracker: Metric tracker with training history
@@ -349,11 +377,11 @@ def train_model(
     print(f"\n{'='*60}")
     print(f"Training {model_name}")
     print(f"{'='*60}")
-    
+
     # Setup
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = create_optimizer(model, config)
+    optimizer = create_optimizer(model, config, model_type)
     scheduler = create_scheduler(optimizer, config)
     
     # Early stopping

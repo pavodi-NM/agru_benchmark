@@ -45,11 +45,11 @@ torch._C._jit_set_profiling_mode(True)
 class AGRUCell(nn.Module):
     """
     Single Antisymmetric GRU Cell.
-    
+
     This implements one layer of the A-GRU, following the formulation:
         Δh̃_s = f(V_h·x_s + (W_h - W_h^T - γI)(r_s ⊙ h_{s-1}) + b_h)
         h_s = h_{s-1} + ε(z_s ⊙ Δh̃_s)
-    
+
     Args:
         input_size: Number of expected features in the input
         hidden_size: Number of features in the hidden state
@@ -58,7 +58,7 @@ class AGRUCell(nn.Module):
         learnable_epsilon: Whether epsilon is a learnable parameter
         bias: If False, the layer does not use bias weights
     """
-    
+
     def __init__(
         self,
         input_size: int,
@@ -69,7 +69,7 @@ class AGRUCell(nn.Module):
         bias: bool = True
     ):
         super(AGRUCell, self).__init__()
-        
+
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.gamma = gamma
@@ -439,9 +439,9 @@ class AGRU(nn.Module):
 class AGRUClassifier(nn.Module):
     """
     A-GRU based sequence classifier.
-    
+
     This wraps the AGRU with a classification head for sequence classification tasks.
-    
+
     Args:
         input_size: Number of input features
         hidden_size: Number of hidden units in A-GRU
@@ -452,8 +452,9 @@ class AGRUClassifier(nn.Module):
         learnable_epsilon: Whether epsilon is learnable
         dropout: Dropout probability
         batch_first: If True, input is (batch, seq, feature)
+        use_torchscript: If True, compile cells with TorchScript for performance
     """
-    
+
     def __init__(
         self,
         input_size: int,

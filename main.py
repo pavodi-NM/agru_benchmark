@@ -3,7 +3,7 @@
 RNN Architecture Benchmark: LSTM vs GRU vs A-GRU
 
 This script runs a comprehensive benchmark comparing three recurrent neural
-network architectures on the Sequential MNIST dataset:
+network architectures on sequence classification tasks:
 1. Standard LSTM (PyTorch implementation)
 2. Standard GRU (PyTorch implementation)
 3. Antisymmetric GRU (A-GRU, custom implementation)
@@ -11,8 +11,14 @@ network architectures on the Sequential MNIST dataset:
 The A-GRU implements the antisymmetric formulation that views RNN dynamics
 as a PDE solver, providing theoretical stability guarantees.
 
+Supported Tasks:
+- row_by_row_mnist: Sequential MNIST with 28 timesteps (row-by-row)
+- pixel_by_pixel_mnist: Sequential MNIST with 784 timesteps (pixel-by-pixel)
+
 Usage:
-    python main.py --config config.yaml [--runs N] [--quick]
+    python main.py --task row_by_row_mnist [--runs N] [--quick]
+    python main.py --task pixel_by_pixel_mnist
+    python main.py --list-tasks
 
 Author: Claude (Anthropic)
 """
@@ -32,7 +38,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from models import LSTMClassifier, GRUClassifier, AGRUClassifier, count_parameters, get_model_summary
 from data import create_data_loaders, get_dataset_info, print_dataset_info
 from utils import (
-    load_config, print_config,
+    load_config, load_task_config, print_config,
+    get_available_tasks, get_task_config_path,
     train_model, final_evaluation,
     generate_all_plots
 )
@@ -174,7 +181,7 @@ def run_single_experiment(
         
         # Train
         trained_model, tracker = train_model(
-            model, train_loader, val_loader, config, device, model_name
+            model, train_loader, val_loader, config, device, model_name, model_type
         )
         
         # Final evaluation on test set
@@ -279,14 +286,59 @@ def print_final_summary(results: Dict, multi_run: bool = False):
     print("="*70)
 
 
+def list_tasks():
+    """List all available tasks."""
+    tasks = get_available_tasks()
+    if not tasks:
+        print("No tasks found in config/ directory.")
+        print("Create config files (e.g., config/my_task.yaml) to add tasks.")
+        return
+
+    print("\nAvailable tasks:")
+    print("-" * 40)
+    for task in tasks:
+        try:
+            config_path = get_task_config_path(task)
+            # Load config to get description
+            import yaml
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            description = config.get('dataset', {}).get('description', 'No description')
+            sequence_mode = config.get('dataset', {}).get('sequence_mode', 'N/A')
+            print(f"  {task}")
+            print(f"    Mode: {sequence_mode}")
+            print(f"    Description: {description}")
+            print()
+        except Exception as e:
+            print(f"  {task} (error loading: {e})")
+    print("-" * 40)
+    print(f"\nUsage: python main.py --task <task_name>")
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='RNN Architecture Benchmark: LSTM vs GRU vs A-GRU'
+        description='RNN Architecture Benchmark: LSTM vs GRU vs A-GRU',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py --task row_by_row_mnist
+  python main.py --task pixel_by_pixel_mnist --quick
+  python main.py --task row_by_row_mnist --runs 5
+  python main.py --list-tasks
+        """
     )
     parser.add_argument(
-        '--config', type=str, default='config.yaml',
-        help='Path to configuration file'
+        '--task', type=str, default=None,
+        help='Task to run (e.g., row_by_row_mnist, pixel_by_pixel_mnist)'
+    )
+    parser.add_argument(
+        '--config', type=str, default=None,
+        help='Path to custom configuration file (overrides task default)'
+    )
+    parser.add_argument(
+        '--list-tasks', action='store_true',
+        help='List all available tasks'
     )
     parser.add_argument(
         '--runs', type=int, default=None,
@@ -297,15 +349,38 @@ def main():
         help='Quick mode: reduce epochs for testing'
     )
     parser.add_argument(
-        '--output-dir', type=str, default='./results',
-        help='Output directory for results'
+        '--output-dir', type=str, default=None,
+        help='Output directory for results (default: ./results/<task_name>)'
     )
-    
+
     args = parser.parse_args()
-    
+
+    # Handle --list-tasks
+    if args.list_tasks:
+        list_tasks()
+        return
+
+    # Validate that either --task or --config is provided
+    if args.task is None and args.config is None:
+        available = get_available_tasks()
+        parser.error(
+            f"Either --task or --config is required.\n"
+            f"Available tasks: {available}\n"
+            f"Use --list-tasks to see task descriptions."
+        )
+
     # Load configuration
     print("Loading configuration...")
-    config = load_config(args.config)
+    if args.config is not None:
+        # Custom config file provided
+        config = load_config(args.config)
+        task_name = os.path.splitext(os.path.basename(args.config))[0]
+    else:
+        # Load from task
+        config = load_task_config(args.task)
+        task_name = args.task
+
+    print(f"Task: {task_name}")
     
     # Quick mode adjustments
     if args.quick:
@@ -347,7 +422,11 @@ def main():
     print_final_summary(results, multi_run)
     
     # Generate plots and save results
-    output_dir = args.output_dir
+    # Default output directory is results/<task_name>
+    if args.output_dir is not None:
+        output_dir = args.output_dir
+    else:
+        output_dir = os.path.join('./results', task_name)
     os.makedirs(output_dir, exist_ok=True)
     
     if multi_run:

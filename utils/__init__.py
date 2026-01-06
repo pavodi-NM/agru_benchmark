@@ -26,8 +26,13 @@ from .visualization import (
 
 from .config import (
     load_config,
+    load_task_config,
     validate_config,
-    print_config
+    print_config,
+    get_available_tasks,
+    get_task_config_path,
+    get_config_dir,
+    get_project_root
 )
 
 __all__ = [
@@ -49,6 +54,11 @@ __all__ = [
     'generate_all_plots',
     # Config
     'load_config',
+    'load_task_config',
     'validate_config',
-    'print_config'
+    'print_config',
+    'get_available_tasks',
+    'get_task_config_path',
+    'get_config_dir',
+    'get_project_root'
 ]
